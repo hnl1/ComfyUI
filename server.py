@@ -1,5 +1,6 @@
 import os
 import sys
+import stat
 import asyncio
 import traceback
 import time
@@ -1229,11 +1230,14 @@ class PromptServer():
         if verbose:
             logging.info("Starting server\n")
 
-        if os.path.exists(unix_socket):
+        if os.path.lexists(unix_socket):
+            st_mode = os.lstat(unix_socket).st_mode
+            if not stat.S_ISSOCK(st_mode):
+                raise RuntimeError(f"Refusing to remove non-socket path: {unix_socket}")
             os.unlink(unix_socket)
         site = web.UnixSite(runner, unix_socket)
         await site.start()
-        os.chmod(unix_socket, 0o666)
+        os.chmod(unix_socket, 0o660)
         self.address = unix_socket
         self.port = None
         self.unix_socket = unix_socket
