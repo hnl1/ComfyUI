@@ -1238,7 +1238,12 @@ class PromptServer():
             os.unlink(unix_socket)
         site = web.UnixSite(runner, unix_socket)
         await site.start()
-        os.chmod(unix_socket, 0o660)
+        try:
+            os.chmod(unix_socket, 0o660)
+        except OSError as e:
+            await site.stop()
+            await runner.cleanup()
+            raise RuntimeError(f"Failed to set socket permissions: {e}")
         self.address = unix_socket
         self.port = None
         self.unix_socket = unix_socket
