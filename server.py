@@ -1219,6 +1219,27 @@ class PromptServer():
         if call_on_start is not None:
             call_on_start(scheme, self.address, self.port)
 
+    async def start_unix_socket(self, unix_socket, verbose=True):
+        if sys.platform == 'win32':
+            raise RuntimeError("Unix sockets are not supported on Windows. Please use --listen and --port instead.")
+
+        runner = web.AppRunner(self.app, access_log=None)
+        await runner.setup()
+
+        if verbose:
+            logging.info("Starting server\n")
+
+        if os.path.exists(unix_socket):
+            os.unlink(unix_socket)
+        site = web.UnixSite(runner, unix_socket)
+        await site.start()
+        os.chmod(unix_socket, 0o666)
+        self.address = unix_socket
+        self.port = None
+        self.unix_socket = unix_socket
+        if verbose:
+            logging.info("Listening on Unix socket: {}".format(unix_socket))
+
     def add_on_prompt_handler(self, handler):
         self.on_prompt_handlers.append(handler)
 
