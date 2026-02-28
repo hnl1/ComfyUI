@@ -1225,9 +1225,6 @@ class PromptServer():
         if sys.platform == 'win32':
             raise RuntimeError("Unix sockets are not supported on Windows. Please use --listen and --port instead.")
 
-        runner = web.AppRunner(self.app, access_log=None)
-        await runner.setup()
-
         if verbose:
             logging.info("Starting server\n")
 
@@ -1236,14 +1233,19 @@ class PromptServer():
             if not stat.S_ISSOCK(st_mode):
                 raise RuntimeError(f"Refusing to remove non-socket path: {unix_socket}")
             os.unlink(unix_socket)
-        site = web.UnixSite(runner, unix_socket)
-        await site.start()
+
+        runner = web.AppRunner(self.app, access_log=None)
+        await runner.setup()
         try:
+            site = web.UnixSite(runner, unix_socket)
+            await site.start()
             os.chmod(unix_socket, 0o660)
         except OSError as e:
-            await site.stop()
             await runner.cleanup()
-            raise RuntimeError(f"Failed to set socket permissions: {e}")
+            raise RuntimeError(f"Failed to set socket permissions: {e}") from e
+        except Exception:
+            await runner.cleanup()
+            raise
         self.address = unix_socket
         self.port = None
         self.unix_socket = unix_socket
