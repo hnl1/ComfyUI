@@ -1221,6 +1221,7 @@ class PromptServer():
             call_on_start(scheme, self.address, self.port)
 
     async def start_unix_socket(self, unix_socket, verbose=True):
+        """Start the server listening on a Unix domain socket instead of TCP."""
         if sys.platform == 'win32':
             raise RuntimeError("Unix sockets are not supported on Windows. Please use --listen and --port instead.")
 
